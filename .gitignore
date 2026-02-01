@@ -1,0 +1,37 @@
+# Session files (contain sensitive authentication data)
+*.session
+*.session-journal
+
+# Log files
+*.log
+*.err
+
+# Screenshots and debug images
+*.png
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.so
+.env
+.venv
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Config with sensitive data (if any)
+# config.py  # Uncomment if config.py contains secrets
+
+# Temporary files
+*.tmp
+*.bak
