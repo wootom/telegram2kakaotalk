@@ -2,10 +2,15 @@ import subprocess
 import time
 import sys
 
-def send_to_kakao(room_name, message):
+# Retry configuration
+MAX_RETRIES = 3
+RETRY_BASE_DELAY = 5  # seconds
+
+def send_to_kakao(room_name, message, retry_count=0):
     """
     VAAX 카카오톡 채팅방에 메시지를 전송합니다.
     전제조건: VAAX 창이 항상 열려 있어야 합니다.
+    실패 시 최대 3회까지 재시도합니다.
     """
     if not room_name or not message:
         return False
@@ -83,7 +88,19 @@ def send_to_kakao(room_name, message):
             print(f"Result: {output}")
             return False
     except subprocess.CalledProcessError as e:
-        print(f"Error: {e.stderr}")
+        error_msg = e.stderr or str(e)
+        print(f"Error: {error_msg}")
+        
+        # Check for accessibility permission error (-25211) and retry
+        if "-25211" in error_msg or "보조 접근" in error_msg:
+            if retry_count < MAX_RETRIES:
+                delay = RETRY_BASE_DELAY * (2 ** retry_count)  # Exponential backoff
+                print(f"⚠️ Accessibility permission issue. Retrying in {delay} seconds... (attempt {retry_count + 1}/{MAX_RETRIES})")
+                time.sleep(delay)
+                return send_to_kakao(room_name, message, retry_count + 1)
+            else:
+                print(f"❌ Max retries ({MAX_RETRIES}) reached. Message failed to send.")
+        
         return False
 
 if __name__ == "__main__":
