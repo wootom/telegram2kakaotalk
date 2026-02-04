@@ -18,17 +18,41 @@ async def start_listener():
         return
 
     import os
+    import shutil
+    
+    # Define new session directory in user home
+    home_dir = os.path.expanduser("~")
+    session_dir = os.path.join(home_dir, ".vaax-telegram")
+    
+    # Create directory if it doesn't exist
+    if not os.path.exists(session_dir):
+        os.makedirs(session_dir)
+        logger.info(f"Created session directory: {session_dir}")
+
     base_path = os.path.dirname(os.path.abspath(__file__))
     
     if hasattr(config, 'BOT_TOKEN') and config.BOT_TOKEN:
         logger.info("Logging in with Bot Token...")
-        session_path = os.path.join(base_path, 'vaax_bot_session')
+        session_name = 'vaax_bot_session'
+        session_path = os.path.join(session_dir, session_name)
         client = TelegramClient(session_path, config.API_ID, config.API_HASH)
     else:
         logger.info("Logging in with User Account...")
-        session_path = os.path.join(base_path, 'vaax_session')
-        logger.info(f"Using session file at: {session_path}.session")
-        client = TelegramClient(session_path, config.API_ID, config.API_HASH)
+        session_name = 'vaax_session'
+        new_session_path = os.path.join(session_dir, session_name)
+        
+        # Check for old session file and migrate if needed
+        old_session_path = os.path.join(base_path, session_name + '.session')
+        if os.path.exists(old_session_path) and not os.path.exists(new_session_path + '.session'):
+            logger.info(f"Migrating session file from {old_session_path} to {new_session_path}.session")
+            try:
+                shutil.move(old_session_path, new_session_path + '.session')
+                logger.info("Migration successful.")
+            except Exception as e:
+                logger.error(f"Failed to migrate session file: {e}")
+        
+        logger.info(f"Using session file at: {new_session_path}.session")
+        client = TelegramClient(new_session_path, config.API_ID, config.API_HASH)
 
     @client.on(events.NewMessage)
     async def handler(event):
