@@ -110,6 +110,7 @@ async def start_listener():
         mappings = settings.get('mappings', [])
         for m in mappings:
             if m['source'].lower() in source_name.lower():
+                logger.info(f"Matched mapping: '{m['source']}' in '{source_name}' -> Target: '{m['target']}'")
                 target_rooms.append(m['target'])
 
         # Fallback to config.py if no mapping found (Backward Compatibility)

@@ -5,15 +5,20 @@
             "target": "FOVEA"
         },
         {
-            "source": "포비아",
-            "target": "FOVEA"
+            "source": "vaax notifier",
+            "target": "VAAX"
         },
         {
             "source": "vaax notifier",
             "target": "FOVEA"
+        },
+        {
+            "source": "포비아",
+            "target": "FOVEA"
         }
     ],
     "recent_sources": [
+        "포비아",
         "vaax notifier"
     ]
 }

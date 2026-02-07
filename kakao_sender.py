@@ -31,30 +31,48 @@ def send_to_kakao(room_name, message, retry_count=0):
             set frontmost to true
             delay 0.5
             
+            set room_name to "{room_name}"
+            
             -- Find VAAX window
             set vaaxWin to missing value
-            repeat with win in windows
-                if name of win is "{room_name}" then
-                    set vaaxWin to win
-                    exit repeat
-                end if
-            end repeat
+            -- Find window safely
+            try
+                set vaaxWin to window 1 whose name is room_name
+            on error
+                set vaaxWin to missing value
+            end try
             
             if vaaxWin is missing value then
-                return "ERROR: {room_name} window not found."
+            if vaaxWin is missing value then
+                return "ERROR: Window '" & room_name & "' not found."
+            end if
             end if
             
-            -- Raise window
+            -- Raise window (Aggressive activation)
             perform action "AXRaise" of vaaxWin
+            -- set frontmost of vaaxWin to true -- This causes -10006 error on some systems
             delay 0.5
+            
+            -- Verify focus (Optional but good for debugging)
+            -- set focusedWindow to value of attribute "AXFocusedWindow" of process "KakaoTalk"
+            -- if focusedWindow is missing value or name of focusedWindow is not room_name then
+            --     perform action "AXRaise" of vaaxWin
+            --     delay 0.5
+            -- end if
             
             -- Get position and size
             set {{vX, vY}} to position of vaaxWin
             set {{vW, vH}} to size of vaaxWin
             
-            -- Click input area (center, 80px from bottom)
-            click at {{vX + (vW / 2), vY + vH - 80}}
-            delay 0.5
+            log "Window Bounds: " & vX & "," & vY & " " & vW & "x" & vH
+            
+            -- Click input area (center, 50px from bottom)
+            -- Moved closer to bottom to avoid hitting message area
+            set clickX to vX + (vW / 2)
+            set clickY to vY + vH - 50
+            
+            click at {{clickX, clickY}}
+            delay 1.0 
             
             -- Clear any existing text
             keystroke "a" using {{command down}}
@@ -62,7 +80,7 @@ def send_to_kakao(room_name, message, retry_count=0):
             key code 51 -- Delete
             delay 0.2
             
-            -- Paste from clipboard (Cmd+V) using key code
+            -- Copy from clipboard (Cmd+V) using key code
             key code 9 using {{command down}}
             delay 0.5
             
