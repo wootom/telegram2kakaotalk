@@ -9,8 +9,15 @@ API_HASH = 'dc8e3472e592ac6138b1bfb57e6e7d81'
 # BOT_TOKEN = '8526353326:AAGuYBDDyOiZfQd4hbpHyIwGzvFK0_Bzqa4'
 
 # KakaoTalk Settings
-# Exact name of the open chat room or friend in your KakaoTalk list
-# IMPORTANT: The room must be visible in the chat list or searchable.
+# Mapping: 'Telegram Source Name' -> 'KakaoTalk Room Name'
+# IMPORTANT: The target rooms must be OPEN on your screen.
+SOURCE_TO_TARGET_MAP = {
+    'vaax notifier': 'VAAX',
+    'Openclaw-fovea': 'FOVEA',
+    '포비아': 'FOVEA'
+}
+
+# Legacy support (will be deprecated)
 TARGET_KAKAO_ROOM = 'VAAX'
 
 # Source Telegram Chats (Optional)

@@ -54,6 +54,7 @@ async def start_listener():
         logger.info(f"Using session file at: {new_session_path}.session")
         client = TelegramClient(new_session_path, config.API_ID, config.API_HASH)
 
+    # Listen for all messages (incoming and outgoing) to support 'Saved Messages' forwarding
     @client.on(events.NewMessage)
     async def handler(event):
         sender = await event.get_sender()
@@ -76,25 +77,84 @@ async def start_listener():
         logger.info(f"DEBUG: Sender Name: {getattr(sender, 'first_name', '')} {getattr(sender, 'last_name', '')}")
         logger.info(f"Resolved Source Name: {source_name}")
 
-        if not source_name or 'vaax notifier' not in source_name.lower():
-            logger.info(f"Skipping message from {source_name} (not vaax notifier)")
+        target_room = None
+        
+        # Load settings dynamically
+        import json
+        import os
+        SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'settings.json')
+        
+        settings = {"mappings": [], "recent_sources": []}
+        if os.path.exists(SETTINGS_FILE):
+            try:
+                with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                    settings = json.load(f)
+            except Exception as e:
+                logger.error(f"Failed to load settings.json: {e}")
+
+        # Update recent sources if unique
+        if source_name and source_name not in settings.get('recent_sources', []):
+            try:
+                # Keep only last 20 sources
+                recents = [source_name] + settings.get('recent_sources', [])
+                settings['recent_sources'] = recents[:20]
+                with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
+                    json.dump(settings, f, ensure_ascii=False, indent=4)
+            except Exception as e:
+                logger.error(f"Failed to save recent sources: {e}")
+
+        # Find ALL matching targets for multi-target broadcasting
+        target_rooms = []
+        
+        # Check mappings in settings.json
+        mappings = settings.get('mappings', [])
+        for m in mappings:
+            if m['source'].lower() in source_name.lower():
+                target_rooms.append(m['target'])
+
+        # Fallback to config.py if no mapping found (Backward Compatibility)
+        if not target_rooms and hasattr(config, 'SOURCE_TO_TARGET_MAP'):
+             for src_key, target_val in config.SOURCE_TO_TARGET_MAP.items():
+                if src_key.lower() in source_name.lower():
+                    target_rooms.append(target_val)
+                    # Don't break here if we want to support 1:N in config.py too, 
+                    # but config.py structure is 1:1 map, so break is fine or let it append if keys overlap.
+        
+        # Legacy fallback
+        if not target_rooms and 'vaax notifier' in source_name.lower():
+             target_rooms.append(getattr(config, 'TARGET_KAKAO_ROOM', 'VAAX'))
+
+        # Remove duplicates
+        target_rooms = list(set(target_rooms))
+
+        if not target_rooms:
+            logger.info(f"Skipping message from {source_name} (no target mapped)")
             return
 
         message_text = event.message.message
         
         if not message_text:
-            return # Skip empty messages (e.g. media only, though Telethon usually gives text for media captions)
+            return # Skip empty messages
 
-        # Format message for KakaoTalk (no prefix, just the message)
+        # Format message for KakaoTalk
         formatted_message = message_text
         
-        logger.info(f"Forwarding to KakaoTalk: {config.TARGET_KAKAO_ROOM}")
-        success = send_to_kakao(config.TARGET_KAKAO_ROOM, formatted_message)
+        logger.info(f"Broadcasting from '{source_name}' to {target_rooms}")
         
-        if success:
-            logger.info("Message forwarded successfully.")
+        encryption_errors = []
+        success_count = 0
+        
+        for room in target_rooms:
+            logger.info(f"Forwarding to '{room}'...")
+            if send_to_kakao(room, formatted_message):
+                success_count += 1
+            else:
+                logger.error(f"Failed to forward to '{room}'")
+
+        if success_count > 0:
+            logger.info(f"Message forwarded successfully to {success_count}/{len(target_rooms)} targets.")
         else:
-            logger.error("Failed to forward message.")
+            logger.error("Failed to forward message to any target.")
 
     try:
         logger.info("Starting Telegram listener Loop...")
